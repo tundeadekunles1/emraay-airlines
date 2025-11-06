@@ -54,7 +54,7 @@ jobs:
           # done
 
           # echo "❌ App failed to start. Tail of /tmp/next.log:"
-          # tail -n 200 /tmp/next.log || true
+           tail -n 200 /tmp/next.log || true
           # exit 1
         EOF
 

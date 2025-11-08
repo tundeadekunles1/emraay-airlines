@@ -1,0 +1,76 @@
+name: Build and Test Github Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - github-actions
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v4
+    - uses: webfactory/ssh-agent@v0.9.0
+      with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+    - name: Deploy to EC2 (stop→build→start→verify)
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} <<'EOF'
+          set -euo pipefail
+
+          cd ~/emraay-airlines
+          git fetch origin
+          git checkout github-actions
+          git reset --hard origin/github-actions
+
+          # 1) stop old listener (don't fail if absent)
+          # set +e
+          sudo fuser -k 3000/tcp >/dev/null 2>&1
+          # set -e
+
+          # 2) build
+          npm ci
+          npm run build
+
+          # 3) start (public test). For Nginx later, change -H to 127.0.0.1
+          nohup npm start -- -p 3000 -H 0.0.0.0 > /tmp/next.log 2>&1 & echo $! > /tmp/next.pid
+
+          # 4) readiness loop (no other curls outside this)
+          sleep 10 # initial wait before first test
+          curl -f http://localhost:3000 || exit 1
+          # for i in {1..30}; do
+          #   if curl -fsS --max-time 2 http://127.0.0.1:3000/ >/dev/null; then
+          #     echo "✅ App is up on 0.0.0.0:3000"
+          #     exit 0
+          #   fi
+          #   sleep 1
+          # done
+
+          # echo "❌ App failed to start. Tail of /tmp/next.log:"
+           tail -n 200 /tmp/next.log || true
+          # exit 1
+        EOF
+
+
+
+
+    # - name: Set up Node.js
+    #   uses: actions/setup-node@v6
+    #   with:
+    #     node-version: '20'
+    # - name: Install dependencies
+    #   run: npm install
+    # - name: Run build
+    #   run: npm run build
+    # - name: Start Application
+    #   run: npm start &
+    # - name: Test Application
+    #   run: |
+    #     curl -f http://localhost:3000 || exit 1

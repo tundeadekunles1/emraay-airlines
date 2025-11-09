@@ -42,7 +42,7 @@ export default function Home() {
                   <span className="block text-blue-400">Private Jets</span>
                 </h1>
                 <p className="text-xl text-blue-100 max-w-lg">
-                  Experience the ultimate in private aviation with Emraay Airlines. 
+                  Experience the ultimate in private aviation with Samfly Airlines. 
                   Premium service, unmatched comfort, and global reach.
                 </p>
               </div>
@@ -304,7 +304,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-white/20 mt-8 pt-8 text-center text-blue-200">
-            <p>&copy; 2024 Emraay Airlines. All rights reserved. | Luxury Private Jet Charter</p>
+            <p>&copy; 2025 Emraay Airlines. All rights reserved. | Luxury Private Jet Charter</p>
           </div>
         </div>
       </footer>

@@ -177,3 +177,55 @@ For questions or issues:
 ---
 
 **Built with ❤️ for luxury aviation enthusiasts**
+
+
+
+name: Build and Test Github Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - github-actions
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up SSH agent
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Test SSH Connection
+      run: ssh -v -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} exit
+
+    - name: Deploy to EC2 (stop→build→start→verify)
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          set -euo pipefail
+          cd ~/emraay-airlines
+          git fetch origin
+          git checkout github-actions
+          git reset --hard origin/github-actions
+          # 1) stop old listener (don't fail if absent)
+          sudo fuser -k 3000/tcp >/dev/null 2>&1 || true
+          # 🧹 Clean before install
+          rm -rf node_modules
+          # 2) build
+          npm ci  
+          npm run build
+          # 3) start (public test)
+          nohup npm start -- -p 3000 -H 0.0.0.0 > /tmp/next.log 2>&1 & echo $! > /tmp/next.pid
+          # 4) readiness loop
+          sleep 10
+          curl -f http://localhost:3000 || exit 1
+          tail -n 200 /tmp/next.log || true
+        EOF
